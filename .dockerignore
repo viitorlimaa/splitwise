@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+pnpm-debug.log
+.git
+.gitignore
+.env
+.env.*
+dist
+coverage
+.vscode
+Dockerfile
+.dockerignore
+README.md
+src/generated
+*.tsbuildinfo

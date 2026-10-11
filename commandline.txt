@@ -1,0 +1,16 @@
+-ignoreprofile
+-cityDensity 0.5
+-fullscreen
+-anisotropicQualityLevel 0
+-fxaa 0
+-grassQuality 0
+-multiSample 1
+-particleQuality 0
+-postFX 0
+-reflectionQuality 0
+-SSAO 0
+-shaderQuality 0
+-shadowQuality 0
+-tessellation 0
+-textureQuality 0
+-waterQuality 0
