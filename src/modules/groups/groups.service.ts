@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client.js';
+import { normalizeEmail } from '../auth/auth.utils.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AddMemberDto } from './dto/add-member.dto.js';
 import { CreateGroupDto } from './dto/create-group.dto.js';
@@ -36,42 +43,53 @@ export class GroupsService {
         },
       },
       include: {
-        members: {
-          include: {
-            user: true,
+        _count: {
+          select: {
+            members: true,
           },
         },
       },
     });
   }
 
-  async addMember(groupId: string, data: AddMemberDto) {
-    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+  async addMember(groupId: string, requesterId: string, data: AddMemberDto) {
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+    });
 
     if (!group) {
       throw new NotFoundException('Grupo não encontrado');
     }
 
-    return this.prisma.groupMember.create({
-      data: {
-        groupId,
-        userId: data.userId,
-      },
-      include: { user: true },
-    });
-  }
-
-  async removeMember(groupId: string, memberId: string) {
-    const groupMember = await this.prisma.groupMember.findFirst({
-      where: { groupId, id: memberId },
-    });
-
-    if (!groupMember) {
-      throw new NotFoundException('Membro não encontrado no grupo');
+    if (group.createdById !== requesterId) {
+      throw new ForbiddenException('Somente o criador pode adicionar membros');
     }
 
-    return this.prisma.groupMember.delete({
-      where: { id: memberId },
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizeEmail(data.email) },
     });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    try {
+      return await this.prisma.groupMember.create({
+        data: {
+          groupId,
+          userId: user.id,
+        },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Usuário já é membro do grupo');
+      }
+
+      throw error;
+    }
   }
 }
