@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Post,
@@ -35,12 +34,11 @@ export class GroupsController {
   }
 
   @Post(':id/members')
-  addMember(@Param('id') groupId: string, @Body() data: AddMemberDto) {
-    return this.groupsService.addMember(groupId, data);
-  }
-
-  @Delete(':id/members/:memberId')
-  removeMember(@Param('id') groupId: string, @Param('memberId') memberId: string) {
-    return this.groupsService.removeMember(groupId, memberId);
+  addMember(
+    @Param('id') groupId: string,
+    @Req() request: AuthenticatedRequest,
+    @Body() data: AddMemberDto,
+  ) {
+    return this.groupsService.addMember(groupId, request.user.sub, data);
   }
 }
