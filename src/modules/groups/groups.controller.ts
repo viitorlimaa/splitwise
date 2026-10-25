@@ -3,18 +3,16 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { AddMemberDto } from './dto/add-member.dto.js';
 import { CreateGroupDto } from './dto/create-group.dto.js';
 import { GroupsService } from './groups.service.js';
-
-type AuthenticatedRequest = Request & { user: { sub: string } };
 
 @ApiTags('groups')
 @ApiBearerAuth()
@@ -24,21 +22,21 @@ export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
   @Post()
-  create(@Req() request: AuthenticatedRequest, @Body() data: CreateGroupDto) {
-    return this.groupsService.createGroup(request.user.sub, data);
+  create(@CurrentUser('sub') userId: string, @Body() data: CreateGroupDto) {
+    return this.groupsService.createGroup(userId, data);
   }
 
   @Get()
-  list(@Req() request: AuthenticatedRequest) {
-    return this.groupsService.listGroups(request.user.sub);
+  list(@CurrentUser('sub') userId: string) {
+    return this.groupsService.listGroups(userId);
   }
 
   @Post(':id/members')
   addMember(
-    @Param('id') groupId: string,
-    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) groupId: string,
+    @CurrentUser('sub') userId: string,
     @Body() data: AddMemberDto,
   ) {
-    return this.groupsService.addMember(groupId, request.user.sub, data);
+    return this.groupsService.addMember(groupId, userId, data);
   }
 }
