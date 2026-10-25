@@ -8,14 +8,16 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
   name         String
   passwordHash String?
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime @default(now())
 
-  createdGroups Group[]       @relation("GroupCreator")
+  createdGroups Group[]        @relation("GroupCreator")
   memberships   GroupMember[]
+  paidExpenses  Expense[]      @relation("ExpensePayer")
+  expenseSplits ExpenseSplit[]
 }
 
 model Group {
@@ -24,6 +26,7 @@ model Group {
   createdById String
   createdBy   User          @relation("GroupCreator", fields: [createdById], references: [id])
   members     GroupMember[]
+  expenses    Expense[]
   createdAt   DateTime      @default(now())
 }
 
@@ -36,5 +39,29 @@ model GroupMember {
   joinedAt DateTime @default(now())
 
   @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model Expense {
+  id          String         @id @default(uuid())
+  groupId     String
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidById    String
+  paidBy      User           @relation("ExpensePayer", fields: [paidById], references: [id])
+  description String
+  amountCents Int
+  createdAt   DateTime       @default(now())
+  splits      ExpenseSplit[]
+}
+
+model ExpenseSplit {
+  id          String  @id @default(uuid())
+  expenseId   String
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User    @relation(fields: [userId], references: [id])
+  amountCents Int
+
+  @@unique([expenseId, userId])
   @@index([userId])
 }
