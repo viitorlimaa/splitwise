@@ -22,7 +22,6 @@ export class ExpensesService {
       select: {
         members: {
           select: { userId: true },
-          orderBy: { userId: 'asc' },
         },
       },
     });

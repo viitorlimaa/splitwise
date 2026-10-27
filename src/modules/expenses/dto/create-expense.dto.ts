@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  ArrayMinSize,
+  ArrayNotEmpty,
   ArrayUnique,
   IsArray,
   IsInt,
@@ -51,7 +51,7 @@ export class CreateExpenseDto {
   })
   @IsOptional()
   @IsArray()
-  @ArrayMinSize(1)
+  @ArrayNotEmpty()
   @ArrayUnique()
   @IsUUID(undefined, { each: true })
   participantIds?: string[];

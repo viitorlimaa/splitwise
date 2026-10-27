@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { ExpensesService } from './expenses.service.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('ExpensesService', () => {
   const prismaMock = {
@@ -19,7 +20,7 @@ describe('ExpensesService', () => {
   const service = new ExpensesService(prismaMock as unknown as PrismaService);
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   describe('createExpense', () => {
@@ -58,6 +59,46 @@ describe('ExpensesService', () => {
               ],
             },
           },
+          include: {
+            paidBy: { select: { id: true, name: true, email: true } },
+            splits: {
+              include: {
+                user: { select: { id: true, name: true, email: true } },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it('allows the payer to be outside the participants', async () => {
+      prismaMock.group.findUnique.mockResolvedValue({
+        members: [
+          { userId: 'user-a' },
+          { userId: 'user-b' },
+          { userId: 'user-c' },
+        ],
+      });
+      prismaMock.expense.create.mockResolvedValue({ id: 'expense-id' });
+
+      await service.createExpense('group-id', 'user-a', {
+        description: 'Jantar',
+        amountCents: 1000,
+        paidById: 'user-a',
+        participantIds: ['user-b', 'user-c'],
+      });
+
+      expect(prismaMock.expense.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            paidById: 'user-a',
+            splits: {
+              create: [
+                { userId: 'user-b', amountCents: 500 },
+                { userId: 'user-c', amountCents: 500 },
+              ],
+            },
+          }),
         }),
       );
     });
