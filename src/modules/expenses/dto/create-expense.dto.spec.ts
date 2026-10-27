@@ -57,4 +57,25 @@ describe('CreateExpenseDto', () => {
       ]),
     );
   });
+
+  it('rejects an empty participant list', async () => {
+    const dto = plainToInstance(CreateExpenseDto, {
+      description: 'Jantar',
+      amountCents: 100,
+      participantIds: [],
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          property: 'participantIds',
+          constraints: expect.objectContaining({
+            arrayNotEmpty: expect.any(String),
+          }),
+        }),
+      ]),
+    );
+  });
 });
