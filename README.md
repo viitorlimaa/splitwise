@@ -61,6 +61,7 @@ Exceto cadastro e login, as rotas abaixo exigem autenticação JWT. Envie o toke
 | `POST` | `/api/groups/:groupId/expenses` | JWT, membro do grupo  | Registra uma despesa e suas divisões igualitárias            |
 | `GET`  | `/api/groups/:groupId/expenses` | JWT, membro do grupo  | Lista as despesas do grupo, mais recentes primeiro           |
 | `GET`  | `/api/groups/:groupId/balances` | JWT, membro do grupo  | Calcula o saldo de cada membro                               |
+| `GET`  | `/api/groups/:groupId/settlements` | JWT, membro do grupo | Sugere transferências para zerar os saldos                   |
 
 IDs de grupo devem ser UUIDs. A documentação interativa e os schemas de request/response estão disponíveis no Swagger.
 
@@ -112,11 +113,39 @@ O saldo é calculado como **total pago − total devido nas divisões**. Um sald
 
 Os saldos são calculados em memória a cada consulta, carregando apenas os valores e participantes necessários. Para grupos com milhares de despesas, agregação SQL ou cache pode ser avaliado se medições reais indicarem lentidão.
 
+### Simplificar dívidas
+
+`GET /api/groups/:groupId/settlements` transforma os saldos em transferências sugeridas entre membros, incluindo IDs e nomes de quem paga e recebe. O algoritmo guloso reduz as dívidas ao mínimo prático e produz no máximo `n − 1` transferências; ele não garante o menor número global possível em todos os casos.
+
+Para os saldos do exemplo anterior, a resposta contém duas transferências:
+
+```json
+{
+  "groupId": "550e8400-e29b-41d4-a716-446655440010",
+  "transfers": [
+    {
+      "fromUserId": "550e8400-e29b-41d4-a716-446655440001",
+      "fromName": "Bia",
+      "toUserId": "550e8400-e29b-41d4-a716-446655440000",
+      "toName": "Ana",
+      "amountCents": 3000
+    },
+    {
+      "fromUserId": "550e8400-e29b-41d4-a716-446655440002",
+      "fromName": "Caio",
+      "toUserId": "550e8400-e29b-41d4-a716-446655440000",
+      "toName": "Ana",
+      "amountCents": 3000
+    }
+  ]
+}
+```
+
 ## Escopo atual e próximos passos
 
-Implementados: autenticação e rota do usuário atual; criação e listagem de grupos; inclusão de membros por e-mail pelo criador; criação e listagem de despesas; divisões iguais com participantes selecionáveis; saldos agregados por membro.
+Implementados: autenticação e rota do usuário atual; criação e listagem de grupos; inclusão de membros por e-mail pelo criador; criação e listagem de despesas; divisões iguais com participantes selecionáveis; saldos agregados por membro; sugestão de transferências para simplificar dívidas.
 
-Ainda não implementados: remoção de membros, simplificação de dívidas, registro de pagamentos entre membros, saldo por par de pessoas e paginação do histórico de despesas.
+Ainda não implementados: remoção de membros, registro de pagamentos entre membros, saldo por par de pessoas e paginação do histórico de despesas.
 
 ## Qualidade
 

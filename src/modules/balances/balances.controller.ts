@@ -10,6 +10,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { BalancesService } from './balances.service.js';
 import { GroupBalancesDto } from './dto/group-balances.dto.js';
+import { GroupSettlementsDto } from './dto/group-settlements.dto.js';
 
 @ApiTags('balances')
 @ApiBearerAuth()
@@ -25,5 +26,14 @@ export class BalancesController {
     @CurrentUser('sub') userId: string,
   ) {
     return this.balancesService.getGroupBalances(groupId, userId);
+  }
+
+  @Get(':groupId/settlements')
+  @ApiOkResponse({ type: GroupSettlementsDto })
+  getSettlements(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.balancesService.getGroupSettlements(groupId, userId);
   }
 }

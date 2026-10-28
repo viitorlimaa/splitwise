@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { calculateBalances } from './calculate-balances.js';
+import { simplifyDebts } from './simplify-debts.js';
 
 @Injectable()
 export class BalancesService {
@@ -48,6 +49,25 @@ export class BalancesService {
       balances: calculateBalances(memberIds, group.expenses).map((balance) => ({
         ...balance,
         name: namesByUserId.get(balance.userId) ?? null,
+      })),
+    };
+  }
+
+  async getGroupSettlements(groupId: string, requesterId: string) {
+    const { groupId: resolvedGroupId, balances } = await this.getGroupBalances(
+      groupId,
+      requesterId,
+    );
+    const namesByUserId = new Map(
+      balances.map(({ userId, name }) => [userId, name]),
+    );
+
+    return {
+      groupId: resolvedGroupId,
+      transfers: simplifyDebts(balances).map((transfer) => ({
+        ...transfer,
+        fromName: namesByUserId.get(transfer.fromUserId) ?? null,
+        toName: namesByUserId.get(transfer.toUserId) ?? null,
       })),
     };
   }
