@@ -66,6 +66,50 @@ describe('BalancesService', () => {
     });
   });
 
+  it('returns named settlements using a single group query', async () => {
+    prismaMock.group.findUnique.mockResolvedValue({
+      members: [
+        { userId: 'ana', user: { id: 'ana', name: 'Ana' } },
+        { userId: 'bia', user: { id: 'bia', name: 'Bia' } },
+        { userId: 'caio', user: { id: 'caio', name: 'Caio' } },
+      ],
+      expenses: [
+        {
+          paidById: 'ana',
+          amountCents: 9000,
+          splits: [
+            { userId: 'ana', amountCents: 3000 },
+            { userId: 'bia', amountCents: 3000 },
+            { userId: 'caio', amountCents: 3000 },
+          ],
+        },
+      ],
+    });
+
+    await expect(
+      service.getGroupSettlements('group-id', 'ana'),
+    ).resolves.toEqual({
+      groupId: 'group-id',
+      transfers: [
+        {
+          fromUserId: 'bia',
+          fromName: 'Bia',
+          toUserId: 'ana',
+          toName: 'Ana',
+          amountCents: 3000,
+        },
+        {
+          fromUserId: 'caio',
+          fromName: 'Caio',
+          toUserId: 'ana',
+          toName: 'Ana',
+          amountCents: 3000,
+        },
+      ],
+    });
+    expect(prismaMock.group.findUnique).toHaveBeenCalledTimes(1);
+  });
+
   it('returns not found when the group does not exist', async () => {
     prismaMock.group.findUnique.mockResolvedValue(null);
 

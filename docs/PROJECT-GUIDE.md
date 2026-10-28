@@ -37,7 +37,7 @@ Próximos modelos do domínio: `Expense` e `ExpenseSplit`. Valores monetários d
 1. Criar grupo, adicionar/remover membros e listar grupos do usuário.
 2. Registrar despesas e dividir igualmente entre os membros.
 3. Calcular o saldo de cada membro.
-4. Simplificar dívidas para reduzir o número de transferências necessárias.
+4. Simplificar dívidas com um algoritmo guloso: mínimo prático, com no máximo n − 1 transferências.
 5. Ampliar testes das regras de cálculo e preparar deploy.
 
 ## Desenvolvimento local
