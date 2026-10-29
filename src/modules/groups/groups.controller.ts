@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -38,5 +39,14 @@ export class GroupsController {
     @Body() data: AddMemberDto,
   ) {
     return this.groupsService.addMember(groupId, userId, data);
+  }
+
+  @Delete(':id/members/:userId')
+  removeMember(
+    @Param('id', ParseUUIDPipe) groupId: string,
+    @Param('userId', ParseUUIDPipe) memberId: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.groupsService.removeMember(groupId, userId, memberId);
   }
 }

@@ -46,24 +46,58 @@ pnpm start:dev
 - Swagger: `http://localhost:3000/docs`
 - Health check: `GET /api`
 
+### Preparar ambiente de produção com Docker Compose
+
+Crie um arquivo `.env.production` local (não o versione) com os valores abaixo.
+Use segredos aleatórios e uma senha PostgreSQL hexadecimal para evitar caracteres
+que precisem de escape na URL de conexão:
+
+```dotenv
+POSTGRES_DB=splitwise
+POSTGRES_USER=splitwise
+POSTGRES_PASSWORD=<senha-aleatoria-hexadecimal>
+JWT_SECRET=<segredo-aleatorio-com-pelo-menos-32-bytes>
+PORT=3000
+```
+
+Inicie a stack de produção:
+
+```powershell
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f app
+```
+
+O container da API aguarda o PostgreSQL ficar saudável, aplica migrations antes
+de iniciar e expõe um health check em `GET /api`. Os dados do PostgreSQL ficam
+no volume `postgres_data`; planeje backups e teste restaurações antes de operar
+com dados reais. Para acesso público, coloque a API atrás de um proxy TLS e
+restrinja o acesso direto à porta publicada. Esse setup é uma base Docker
+genérica: provisionamento do host, TLS, gestão de segredos, backups e deploy
+automatizado continuam dependendo do ambiente escolhido.
+
 ## Funcionalidades e endpoints
 
 Exceto cadastro e login, as rotas abaixo exigem autenticação JWT. Envie o token de acesso no cabeçalho `Authorization: Bearer <token>`.
 
-| Método | Endpoint                        | Acesso                | Descrição                                                    |
-| ------ | ------------------------------- | --------------------- | ------------------------------------------------------------ |
-| `POST` | `/api/auth/register`            | Público               | Cadastra usuário e retorna token de acesso                   |
-| `POST` | `/api/auth/login`               | Público               | Autentica usuário e retorna token de acesso                  |
-| `GET`  | `/api/auth/me`                  | JWT                   | Retorna os dados do usuário autenticado                      |
-| `POST` | `/api/groups`                   | JWT                   | Cria grupo; o criador passa a ser membro                     |
-| `GET`  | `/api/groups`                   | JWT                   | Lista os grupos dos quais o usuário autenticado é membro     |
-| `POST` | `/api/groups/:id/members`       | JWT, criador do grupo | Adiciona ao grupo um usuário existente, informado por e-mail |
-| `POST` | `/api/groups/:groupId/expenses` | JWT, membro do grupo  | Registra uma despesa e suas divisões igualitárias            |
-| `GET`  | `/api/groups/:groupId/expenses` | JWT, membro do grupo  | Lista as despesas do grupo, mais recentes primeiro           |
-| `GET`  | `/api/groups/:groupId/balances` | JWT, membro do grupo  | Calcula o saldo de cada membro                               |
-| `GET`  | `/api/groups/:groupId/settlements` | JWT, membro do grupo | Sugere transferências para zerar os saldos                   |
+| Método   | Endpoint                           | Acesso                | Descrição                                                    |
+| -------- | ---------------------------------- | --------------------- | ------------------------------------------------------------ |
+| `POST`   | `/api/auth/register`               | Público               | Cadastra usuário e retorna token de acesso                   |
+| `POST`   | `/api/auth/login`                  | Público               | Autentica usuário e retorna token de acesso                  |
+| `GET`    | `/api/auth/me`                     | JWT                   | Retorna os dados do usuário autenticado                      |
+| `POST`   | `/api/groups`                      | JWT                   | Cria grupo; o criador passa a ser membro                     |
+| `GET`    | `/api/groups`                      | JWT                   | Lista os grupos dos quais o usuário autenticado é membro     |
+| `POST`   | `/api/groups/:id/members`          | JWT, criador do grupo | Adiciona ao grupo um usuário existente, informado por e-mail |
+| `DELETE` | `/api/groups/:id/members/:userId`  | JWT, criador do grupo | Remove um membro sem apagar despesas ou divisões existentes  |
+| `POST`   | `/api/groups/:groupId/expenses`    | JWT, membro do grupo  | Registra uma despesa e suas divisões igualitárias            |
+| `GET`    | `/api/groups/:groupId/expenses`    | JWT, membro do grupo  | Lista as despesas do grupo, mais recentes primeiro           |
+| `GET`    | `/api/groups/:groupId/balances`    | JWT, membro do grupo  | Calcula o saldo de cada membro                               |
+| `GET`    | `/api/groups/:groupId/settlements` | JWT, membro do grupo  | Sugere transferências para zerar os saldos                   |
 
 IDs de grupo devem ser UUIDs. A documentação interativa e os schemas de request/response estão disponíveis no Swagger.
+O criador não pode ser removido. Ao remover outro membro, seu acesso ao grupo
+é revogado, mas seu histórico permanece e seu saldo continua incluído nas
+consultas e sugestões de transferências.
 
 ### Criar uma despesa
 
@@ -143,9 +177,9 @@ Para os saldos do exemplo anterior, a resposta contém duas transferências:
 
 ## Escopo atual e próximos passos
 
-Implementados: autenticação e rota do usuário atual; criação e listagem de grupos; inclusão de membros por e-mail pelo criador; criação e listagem de despesas; divisões iguais com participantes selecionáveis; saldos agregados por membro; sugestão de transferências para simplificar dívidas.
+Implementados: autenticação e rota do usuário atual; criação e listagem de grupos; inclusão e remoção de membros pelo criador; criação e listagem de despesas; divisões iguais com participantes selecionáveis; saldos agregados por membro; sugestão de transferências para simplificar dívidas.
 
-Ainda não implementados: remoção de membros, registro de pagamentos entre membros, saldo por par de pessoas e paginação do histórico de despesas.
+Ainda não implementados: registro/baixa de pagamentos entre membros, saldo por par de pessoas e paginação do histórico de despesas.
 
 ## Qualidade
 
@@ -154,8 +188,16 @@ pnpm exec prisma generate
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm exec prisma migrate deploy
+pnpm test:e2e
 pnpm build
 ```
+
+Os testes e2e usam um PostgreSQL real local; configure `DATABASE_URL` para
+`localhost`/`127.0.0.1`, aplique as migrations e execute-os com
+`pnpm test:e2e`. A suíte recusa conexões com hosts remotos para evitar escrita
+acidental em bases compartilhadas. O CI provisiona esse banco e roda os testes
+automaticamente.
 
 ## Variáveis de ambiente
 

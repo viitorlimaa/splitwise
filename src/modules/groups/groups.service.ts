@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -87,6 +88,41 @@ export class GroupsService {
         error.code === 'P2002'
       ) {
         throw new ConflictException('Usuário já é membro do grupo');
+      }
+
+      throw error;
+    }
+  }
+
+  async removeMember(groupId: string, requesterId: string, memberId: string) {
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Grupo não encontrado');
+    }
+
+    if (group.createdById !== requesterId) {
+      throw new ForbiddenException('Somente o criador pode remover membros');
+    }
+
+    if (memberId === group.createdById) {
+      throw new BadRequestException('O criador não pode ser removido do grupo');
+    }
+
+    try {
+      return await this.prisma.groupMember.delete({
+        where: {
+          groupId_userId: { groupId, userId: memberId },
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Membro não encontrado no grupo');
       }
 
       throw error;
