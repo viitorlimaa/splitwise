@@ -15,6 +15,20 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: splitwise
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d splitwise"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/splitwise?schema=public
@@ -49,6 +63,12 @@ jobs:
 
       - name: Rodar testes
         run: pnpm test
+
+      - name: Aplicar migrations no banco de teste
+        run: pnpm exec prisma migrate deploy
+
+      - name: Rodar testes e2e
+        run: pnpm test:e2e
 
       - name: Build da aplicação
         run: pnpm build

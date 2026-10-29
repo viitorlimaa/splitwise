@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -20,6 +21,7 @@ describe('GroupsService', () => {
     },
     groupMember: {
       create: vi.fn(),
+      delete: vi.fn(),
     },
   };
 
@@ -152,6 +154,75 @@ describe('GroupsService', () => {
           email: 'new@example.com',
         }),
       ).rejects.toBe(unexpectedError);
+    });
+  });
+
+  describe('removeMember', () => {
+    it('only allows the group creator to remove members', async () => {
+      prismaMock.group.findUnique.mockResolvedValue({
+        id: 'group-id',
+        createdById: 'creator-id',
+      });
+
+      await expect(
+        service.removeMember('group-id', 'other-user-id', 'member-id'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prismaMock.groupMember.delete).not.toHaveBeenCalled();
+    });
+
+    it('does not allow removing the group creator', async () => {
+      prismaMock.group.findUnique.mockResolvedValue({
+        id: 'group-id',
+        createdById: 'creator-id',
+      });
+
+      await expect(
+        service.removeMember('group-id', 'creator-id', 'creator-id'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prismaMock.groupMember.delete).not.toHaveBeenCalled();
+    });
+
+    it('removes membership without deleting the associated history', async () => {
+      prismaMock.group.findUnique.mockResolvedValue({
+        id: 'group-id',
+        createdById: 'creator-id',
+      });
+      prismaMock.groupMember.delete.mockResolvedValue({ id: 'membership-id' });
+
+      await expect(
+        service.removeMember('group-id', 'creator-id', 'member-id'),
+      ).resolves.toEqual({ id: 'membership-id' });
+      expect(prismaMock.groupMember.delete).toHaveBeenCalledWith({
+        where: {
+          groupId_userId: { groupId: 'group-id', userId: 'member-id' },
+        },
+      });
+    });
+
+    it('returns not found when the member is not in the group', async () => {
+      prismaMock.group.findUnique.mockResolvedValue({
+        id: 'group-id',
+        createdById: 'creator-id',
+      });
+      prismaMock.groupMember.delete.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError(
+          'Record to delete does not exist',
+          { code: 'P2025', clientVersion: '7.10.0' },
+        ),
+      );
+
+      await expect(
+        service.removeMember('group-id', 'creator-id', 'missing-member-id'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('returns not found when the group does not exist', async () => {
+      prismaMock.group.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.removeMember('missing-group', 'creator-id', 'member-id'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prismaMock.groupMember.delete).not.toHaveBeenCalled();
     });
   });
 

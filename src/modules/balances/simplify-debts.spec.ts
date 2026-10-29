@@ -37,9 +37,9 @@ describe('simplifyDebts', () => {
   });
 
   it('rejects fractional and unbalanced balances', () => {
-    expect(() =>
-      simplifyDebts([{ userId: 'a', balanceCents: 1.5 }]),
-    ).toThrow(RangeError);
+    expect(() => simplifyDebts([{ userId: 'a', balanceCents: 1.5 }])).toThrow(
+      RangeError,
+    );
     expect(() =>
       simplifyDebts([
         { userId: 'a', balanceCents: -1 },
@@ -116,8 +116,9 @@ describe('simplifyDebts', () => {
         }
 
         expect(transfers.length).toBeLessThanOrEqual(memberCount - 1);
-        expect([...settledBalances.values()].every((balance) => balance === 0))
-          .toBe(true);
+        expect(
+          [...settledBalances.values()].every((balance) => balance === 0),
+        ).toBe(true);
       }
     }
   });
